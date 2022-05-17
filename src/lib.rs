@@ -6,6 +6,8 @@ pub use yew_agent::{Bridge, Bridged, Dispatched, Dispatcher};
 use reqwasm::http::{Request};
 use std::sync::{Mutex};
 use std::rc::Rc;
+#[cfg(test)]
+pub mod tests;
 
 #[derive(Serialize, Deserialize)]
 pub enum HttpAgentInput {
@@ -84,7 +86,7 @@ impl Agent for HttpAgent {
                     };
                 });
             },
-            Self::Input::Get{url, call_name} => {
+            Self::Input::Get{url:_, call_name:_} => {
             }
         }
     }
