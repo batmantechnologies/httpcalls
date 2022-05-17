@@ -12,7 +12,7 @@ behaves like ajax in jquery, this triggers update method of Component.
 I couln't get tests up and running hence pasted mu production usage code.
 
 We are developping a huge huge wasm ecommerce web applicaiton, Entire stack based on just
-Rust and Rust frameworks both back end and front end, 
+Rust and Rust frameworks both back end and front end,
 
 
 ```
@@ -24,7 +24,7 @@ use web_sys::{HtmlInputElement, HtmlElement,
               Node,
               NamedNodeMap, DomTokenList};
 use gloo_console::log;
-use httpcalls::{HttpAgent, HttpAgentOutput};
+use httpcalls::{HttpAgent, HttpAgentOutput, HttpWorkerInput};
 use httpcalls::{Bridge, Bridged};
 use std::collections::HashMap;
 // use wasm_bindgen::{prelude::Cuse wasm_bindgen::JsCast;losure, JsCast};
