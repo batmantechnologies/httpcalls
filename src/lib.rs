@@ -27,7 +27,7 @@ impl HttpAgentInput {
         HttpAgentInput::Get{url, call_name}
     }
 
-    pub fn build_post(url: String, call_name: String, data: String) -> HttpAgentInput {
+    pub fn build_post(call_name: String, url: String, data: String) -> HttpAgentInput {
         HttpAgentInput::Post {url, call_name, data}
     }
 }
@@ -36,6 +36,7 @@ impl HttpAgentInput {
 pub struct HttpAgentOutput {
     pub value: Option<String>,
     pub call_name: String,
+    pub status_code: u16
 }
 
 pub struct HttpAgent {
@@ -65,25 +66,37 @@ impl Agent for HttpAgent {
         match msg {
             Self::Input::Post{url, call_name, data} => {
                 wasm_bindgen_futures::spawn_local(async move {
-                    let result = Request::post(&url).header("Content-Type", "application/json")
-                        .body(data).send().await;
+                    let result = Request::post(&url)
+                                .header("Content-Type", "application/json")
+                                .body(data).send().await;
 
-                    match result {
+                    let linker = link.lock().unwrap();
+
+                    let output = match result {
                         Ok(res) if res.status() == 200 => {
-                            let output = Self::Output {
+
+                            Self::Output {
+                                status_code: res.status(),
                                 value: Some("Hello ".to_string()),
                                 call_name: call_name
-                            };
-                            let linker = link.lock().unwrap();
-                            linker.respond(id, output);
+                            }
                         },
                         Err(_) => {
-                            log!("404");
+                            Self::Output {
+                                status_code: 404,
+                                value: None,
+                                call_name: call_name
+                            }
                         },
                         Ok(res) => {
-                            log!(res.status().clone());
+                            Self::Output {
+                                status_code: res.status(),
+                                value: Some(res.text().await.unwrap()), // res.body.u,
+                                call_name: call_name
+                            }
                         },
                     };
+                    linker.respond(id, output);
                 });
             },
             Self::Input::Get{url:_, call_name:_} => {
