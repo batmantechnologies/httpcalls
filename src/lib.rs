@@ -77,7 +77,7 @@ impl Agent for HttpAgent {
 
                             Self::Output {
                                 status_code: res.status(),
-                                value: Some("Hello ".to_string()),
+                                value: Some(res.text().await.unwrap()),
                                 call_name: call_name
                             }
                         },
@@ -99,7 +99,39 @@ impl Agent for HttpAgent {
                     linker.respond(id, output);
                 });
             },
-            Self::Input::Get{url:_, call_name:_} => {
+            Self::Input::Get{url, call_name} => {
+                wasm_bindgen_futures::spawn_local(async move {
+                    let result = Request::get(&url)
+                        .send()
+                        .await;
+
+                    let linker = link.lock().unwrap();
+
+                    let output = match result {
+                        Ok(res) if res.status() == 200 => {
+                            Self::Output {
+                                status_code: res.status(),
+                                value: Some(res.text().await.unwrap()),
+                                call_name: call_name
+                            }
+                        },
+                        Err(_) => {
+                            Self::Output {
+                                status_code: 404,
+                                value: None,
+                                call_name: call_name
+                            }
+                        },
+                        Ok(res) => {
+                            Self::Output {
+                                status_code: res.status(),
+                                value: Some(res.text().await.unwrap()), 
+                                call_name: call_name
+                            }
+                        },
+                    };
+                    linker.respond(id, output);
+                });
             }
         }
     }
