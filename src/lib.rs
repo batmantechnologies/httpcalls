@@ -9,7 +9,7 @@ use std::rc::Rc;
 #[cfg(test)]
 pub mod tests;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum HttpAgentInput {
     Post {
         url: String,
@@ -23,7 +23,7 @@ pub enum HttpAgentInput {
 }
 
 impl HttpAgentInput {
-    pub fn build_get(url: String, call_name: String) -> HttpAgentInput {
+    pub fn build_get(call_name: String, url: String) -> HttpAgentInput {
         HttpAgentInput::Get{url, call_name}
     }
 
@@ -32,7 +32,7 @@ impl HttpAgentInput {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct HttpAgentOutput {
     pub value: Option<String>,
     pub call_name: String,
@@ -75,9 +75,12 @@ impl Agent for HttpAgent {
                     let output = match result {
                         Ok(res) if res.status() == 200 => {
 
+                            let data = res.text().await;
+                            let text: Option<String> = data.ok();
+
                             Self::Output {
                                 status_code: res.status(),
-                                value: Some("Hello ".to_string()),
+                                value: text,
                                 call_name: call_name
                             }
                         },
@@ -89,9 +92,13 @@ impl Agent for HttpAgent {
                             }
                         },
                         Ok(res) => {
+
+                            let data = res.text().await;
+                            let text: Option<String> = data.ok();
+
                             Self::Output {
                                 status_code: res.status(),
-                                value: Some(res.text().await.unwrap()), // res.body.u,
+                                value: text,
                                 call_name: call_name
                             }
                         },
@@ -99,7 +106,45 @@ impl Agent for HttpAgent {
                     linker.respond(id, output);
                 });
             },
-            Self::Input::Get{url:_, call_name:_} => {
+            Self::Input::Get{url, call_name} => {
+                wasm_bindgen_futures::spawn_local(async move {
+                    let result = Request::get(&url)
+                                .send().await;
+                    let linker = link.lock().unwrap();
+
+                    let output = match result {
+                        Ok(res) if res.status() == 200 => {
+
+                            let data = res.text().await;
+                            let text: Option<String> = data.ok();
+
+                            Self::Output {
+                                status_code: res.status(),
+                                value: text,
+                                call_name: call_name
+                            }
+                        },
+                        Err(_) => {
+                            Self::Output {
+                                status_code: 404,
+                                value: None,
+                                call_name: call_name
+                            }
+                        },
+                        Ok(res) => {
+
+                            let data = res.text().await;
+                            let text: Option<String> = data.ok();
+
+                            Self::Output {
+                                status_code: res.status(),
+                                value: text,
+                                call_name: call_name
+                            }
+                        },
+                    };
+                    linker.respond(id, output);
+                });
             }
         }
     }
