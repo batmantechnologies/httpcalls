@@ -6,6 +6,8 @@ pub use yew_agent::{Bridge, Bridged, Dispatched, Dispatcher};
 use reqwasm::http::{Request};
 use std::sync::{Mutex};
 use std::rc::Rc;
+use httpmessenger::{HttpMessengerAgent, Inputoutput};
+
 #[cfg(test)]
 pub mod tests;
 
@@ -15,45 +17,54 @@ pub enum HttpAgentInput {
         url: String,
         data: String,
         call_name: String,
+        loader: bool
     },
     Get {
         url: String,
         call_name: String,
+        loader: bool
     }
 }
 
 impl HttpAgentInput {
-    pub fn build_get(call_name: String, url: String) -> HttpAgentInput {
-        HttpAgentInput::Get{url, call_name}
+    pub fn build_get(call_name: String, url: String, loader: bool) -> HttpAgentInput {
+        HttpAgentInput::Get{url, call_name, loader}
     }
 
-    pub fn build_post(call_name: String, url: String, data: String) -> HttpAgentInput {
-        HttpAgentInput::Post {url, call_name, data}
+    pub fn build_post(call_name: String, url: String, data: String, loader: bool) -> HttpAgentInput {
+        HttpAgentInput::Post {url, call_name, data, loader}
     }
+}
+
+pub enum HttpMessage {
+    MessengerAgent(Inputoutput),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct HttpAgentOutput {
     pub value: Option<String>,
     pub call_name: String,
-    pub status_code: u16
+    pub status_code: u16,
 }
 
 pub struct HttpAgent {
     link: Rc<Mutex<AgentLink<Self>>>,
     subscribers: HashSet<HandlerId>,
+    messenger:  Rc<Mutex<Box<dyn Bridge<HttpMessengerAgent>>>>,
 }
 
 impl Agent for HttpAgent {
     type Reach = Context<Self>;
-    type Message = ();
+    type Message = HttpMessage;
     type Input = HttpAgentInput;
     type Output = HttpAgentOutput;
 
     fn create(link: AgentLink<Self>) -> Self {
+        let messenger = HttpMessengerAgent::bridge(link.callback(Self::Message::MessengerAgent));
         Self {
             link: Rc::new(Mutex::new(link)),
             subscribers: HashSet::new(),
+            messenger: Rc::new(Mutex::new(messenger))
         }
     }
 
@@ -63,8 +74,17 @@ impl Agent for HttpAgent {
 
         let link = Rc::clone(&self.link);
 
+        let linker_exec = &mut self.messenger.lock().unwrap();
+        let messenger_link = Rc::clone(&self.messenger);
+
         match msg {
-            Self::Input::Post{url, call_name, data} => {
+            Self::Input::Post{url, call_name, data, loader} => {
+
+                // Check if loader is need than only activate the loader
+                if loader {
+                    linker_exec.send(Inputoutput::EnableLoader);
+                }
+
                 wasm_bindgen_futures::spawn_local(async move {
                     let result = Request::post(&url)
                                 .header("Content-Type", "application/json")
@@ -104,9 +124,21 @@ impl Agent for HttpAgent {
                         },
                     };
                     linker.respond(id, output);
+                    if loader {
+                        let linker_exec = &mut messenger_link.lock().unwrap();
+                        linker_exec.send(Inputoutput::DisableLoader);
+                    }
                 });
             },
-            Self::Input::Get{url, call_name} => {
+            Self::Input::Get{url, call_name, loader} => {
+
+                // Check if loader is need than only activate the loader
+                // Same below 3 lines in Post also because we need loader data to togle
+                // But loader data is not available before match statement
+                if loader {
+                    linker_exec.send(Inputoutput::EnableLoader);
+                }
+
                 wasm_bindgen_futures::spawn_local(async move {
                     let result = Request::get(&url)
                                 .send().await;
@@ -144,6 +176,10 @@ impl Agent for HttpAgent {
                         },
                     };
                     linker.respond(id, output);
+                    if loader {
+                        let linker_exec = &mut messenger_link.lock().unwrap();
+                        linker_exec.send(Inputoutput::DisableLoader);
+                    }
                 });
             }
         }
