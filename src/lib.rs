@@ -7,6 +7,7 @@ use reqwasm::http::{Request};
 use std::sync::{Mutex};
 use std::rc::Rc;
 use httpmessenger::{HttpMessengerAgent, Inputoutput};
+use parking_lot::ReentrantMutex;
 
 #[cfg(test)]
 pub mod tests;
@@ -48,7 +49,7 @@ pub struct HttpAgentOutput {
 }
 
 pub struct HttpAgent {
-    link: Rc<Mutex<AgentLink<Self>>>,
+    link: Rc<ReentrantMutex<AgentLink<Self>>>,
     subscribers: HashSet<HandlerId>,
     messenger:  Rc<Mutex<Box<dyn Bridge<HttpMessengerAgent>>>>,
 }
@@ -61,8 +62,9 @@ impl Agent for HttpAgent {
 
     fn create(link: AgentLink<Self>) -> Self {
         let messenger = HttpMessengerAgent::bridge(link.callback(Self::Message::MessengerAgent));
+
         Self {
-            link: Rc::new(Mutex::new(link)),
+            link: Rc::new(ReentrantMutex::new(link)),
             subscribers: HashSet::new(),
             messenger: Rc::new(Mutex::new(messenger))
         }
@@ -74,11 +76,15 @@ impl Agent for HttpAgent {
 
         let link = Rc::clone(&self.link);
 
+
         let linker_exec = &mut self.messenger.lock().unwrap();
+
         let messenger_link = Rc::clone(&self.messenger);
+
 
         match msg {
             Self::Input::Post{url, call_name, data, loader} => {
+
 
                 // Check if loader is need than only activate the loader
                 if loader {
@@ -90,7 +96,7 @@ impl Agent for HttpAgent {
                                 .header("Content-Type", "application/json")
                                 .body(data).send().await;
 
-                    let linker = link.lock().unwrap();
+                    let linker = link.lock();
 
                     let output = match result {
                         Ok(res) if res.status() == 200 => {
@@ -129,6 +135,7 @@ impl Agent for HttpAgent {
                         linker_exec.send(Inputoutput::DisableLoader);
                     }
                 });
+
             },
             Self::Input::Get{url, call_name, loader} => {
 
@@ -142,7 +149,7 @@ impl Agent for HttpAgent {
                 wasm_bindgen_futures::spawn_local(async move {
                     let result = Request::get(&url)
                                 .send().await;
-                    let linker = link.lock().unwrap();
+                    let linker = link.lock();
 
                     let output = match result {
                         Ok(res) if res.status() == 200 => {
@@ -177,8 +184,10 @@ impl Agent for HttpAgent {
                     };
                     linker.respond(id, output);
                     if loader {
+
                         let linker_exec = &mut messenger_link.lock().unwrap();
                         linker_exec.send(Inputoutput::DisableLoader);
+
                     }
                 });
             }
