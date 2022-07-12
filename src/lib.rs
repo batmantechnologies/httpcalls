@@ -24,6 +24,11 @@ pub enum HttpAgentInput {
         url: String,
         call_name: String,
         loader: bool
+    },
+    Delete {
+        url: String,
+        call_name: String,
+        loader: bool
     }
 }
 
@@ -34,6 +39,10 @@ impl HttpAgentInput {
 
     pub fn build_post(call_name: String, url: String, data: String, loader: bool) -> HttpAgentInput {
         HttpAgentInput::Post {url, call_name, data, loader}
+    }
+
+    pub fn build_delete(call_name: String, url: String, loader: bool) -> HttpAgentInput {
+        HttpAgentInput::Delete {url, call_name, loader}
     }
 }
 
@@ -190,7 +199,59 @@ impl Agent for HttpAgent {
 
                     }
                 });
+            },
+            Self::Input::Delete{url, call_name, loader} => {
+
+                if loader {
+                    linker_exec.send(Inputoutput::EnableLoader);
+                }
+
+                wasm_bindgen_futures::spawn_local(async move {
+                    let result = Request::delete(&url)
+                                .send().await;
+                    let linker = link.lock();
+
+                    let output = match result {
+                        Ok(res) if res.status() == 200 => {
+
+                            let data = res.text().await;
+                            let text: Option<String> = data.ok();
+
+                            Self::Output {
+                                status_code: res.status(),
+                                value: text,
+                                call_name: call_name
+                            }
+                        },
+                        Err(_) => {
+                            Self::Output {
+                                status_code: 404,
+                                value: None,
+                                call_name: call_name
+                            }
+                        },
+                        Ok(res) => {
+
+                            let data = res.text().await;
+                            let text: Option<String> = data.ok();
+
+                            Self::Output {
+                                status_code: res.status(),
+                                value: text,
+                                call_name: call_name
+                            }
+                        },
+                    };
+                    linker.respond(id, output);
+                    if loader {
+
+                        let linker_exec = &mut messenger_link.lock().unwrap();
+                        linker_exec.send(Inputoutput::DisableLoader);
+
+                    }
+                });
             }
+
         }
     }
 
