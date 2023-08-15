@@ -13,9 +13,10 @@ gloo-console = "0.2.1"
 wasm-bindgen-futures = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-reqwasm = "0.2"
+reqwasm = "0.5"
 httpmessenger = { path="../httpmessenger" }
 parking_lot = "0.12.1"
+web-sys = "0.3"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.0"

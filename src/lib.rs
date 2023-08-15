@@ -3,20 +3,27 @@ use std::collections::HashSet;
 use gloo_console::log;
 use yew_agent::{Agent, AgentLink, Context, HandlerId};
 pub use yew_agent::{Bridge, Bridged, Dispatched, Dispatcher};
-use reqwasm::http::{Request};
+pub use reqwasm::http::{Request, FormData};
 use std::sync::{Mutex};
 use std::rc::Rc;
 use httpmessenger::{HttpMessengerAgent, Inputoutput};
 use parking_lot::ReentrantMutex;
+// use web_sys::FormData;
+// use reqwasm::multipart::Multipart;
 
 #[cfg(test)]
 pub mod tests;
 
-#[derive(Serialize, Deserialize, Clone)]
 pub enum HttpAgentInput {
     Post {
         url: String,
         data: String,
+        call_name: String,
+        loader: bool
+    },
+    PostFormObj {
+        url: String,
+        data: FormData,
         call_name: String,
         loader: bool
     },
@@ -39,6 +46,10 @@ impl HttpAgentInput {
 
     pub fn build_post(call_name: String, url: String, data: String, loader: bool) -> HttpAgentInput {
         HttpAgentInput::Post {url, call_name, data, loader}
+    }
+
+    pub fn build_form(call_name: String, url: String, data: FormData, loader: bool) -> HttpAgentInput {
+        HttpAgentInput::PostFormObj {url, call_name, data, loader}
     }
 
     pub fn build_delete(call_name: String, url: String, loader: bool) -> HttpAgentInput {
@@ -84,16 +95,11 @@ impl Agent for HttpAgent {
     fn handle_input(&mut self, msg: Self::Input, id: HandlerId) {
 
         let link = Rc::clone(&self.link);
-
-
         let linker_exec = &mut self.messenger.lock().unwrap();
-
         let messenger_link = Rc::clone(&self.messenger);
-
 
         match msg {
             Self::Input::Post{url, call_name, data, loader} => {
-
 
                 // Check if loader is need than only activate the loader
                 if loader {
@@ -144,8 +150,62 @@ impl Agent for HttpAgent {
                         linker_exec.send(Inputoutput::DisableLoader);
                     }
                 });
-
             },
+
+            Self::Input::PostFormObj{url, call_name, data, loader} => {
+
+                // Check if loader is need than only activate the loader
+                if loader {
+                    linker_exec.send(Inputoutput::EnableLoader);
+                }
+
+                wasm_bindgen_futures::spawn_local(async move {
+                    // let multipart = Multipart::new(&data);
+                    let result = Request::post(&url)
+                                .body(&data)
+                                .send().await;
+
+                    let linker = link.lock();
+
+                    let output = match result {
+                        Ok(res) if res.status() == 200 => {
+
+                            let data = res.text().await;
+                            let text: Option<String> = data.ok();
+
+                            Self::Output {
+                                status_code: res.status(),
+                                value: text,
+                                call_name: call_name
+                            }
+                        },
+                        Err(_) => {
+                            Self::Output {
+                                status_code: 404,
+                                value: None,
+                                call_name: call_name
+                            }
+                        },
+                        Ok(res) => {
+
+                            let data = res.text().await;
+                            let text: Option<String> = data.ok();
+
+                            Self::Output {
+                                status_code: res.status(),
+                                value: text,
+                                call_name: call_name
+                            }
+                        },
+                    };
+                    linker.respond(id, output);
+                    if loader {
+                        let linker_exec = &mut messenger_link.lock().unwrap();
+                        linker_exec.send(Inputoutput::DisableLoader);
+                    }
+                });
+            },
+
             Self::Input::Get{url, call_name, loader} => {
 
                 // Check if loader is need than only activate the loader
@@ -251,7 +311,6 @@ impl Agent for HttpAgent {
                     }
                 });
             }
-
         }
     }
 
