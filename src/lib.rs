@@ -66,6 +66,8 @@ pub struct HttpAgentOutput {
     pub value: Option<String>,
     pub call_name: String,
     pub status_code: u16,
+    pub url: String,
+    pub redirected: bool
 }
 
 pub struct HttpAgent {
@@ -122,14 +124,18 @@ impl Agent for HttpAgent {
                             Self::Output {
                                 status_code: res.status(),
                                 value: text,
-                                call_name: call_name
+                                call_name: call_name,
+                                url: res.url(),
+                                redirected: res.redirected()
                             }
                         },
                         Err(_) => {
                             Self::Output {
                                 status_code: 404,
                                 value: None,
-                                call_name: call_name
+                                call_name: call_name,
+                                url: "".into(),
+                                redirected: false
                             }
                         },
                         Ok(res) => {
@@ -140,7 +146,9 @@ impl Agent for HttpAgent {
                             Self::Output {
                                 status_code: res.status(),
                                 value: text,
-                                call_name: call_name
+                                call_name: call_name,
+                                url: res.url(),
+                                redirected: res.redirected()
                             }
                         },
                     };
@@ -176,14 +184,18 @@ impl Agent for HttpAgent {
                             Self::Output {
                                 status_code: res.status(),
                                 value: text,
-                                call_name: call_name
+                                call_name: call_name,
+                                url: res.url(),
+                                redirected: res.redirected()
                             }
                         },
                         Err(_) => {
                             Self::Output {
                                 status_code: 404,
                                 value: None,
-                                call_name: call_name
+                                call_name: call_name,
+                                url: "".into(),
+                                redirected: false
                             }
                         },
                         Ok(res) => {
@@ -194,7 +206,9 @@ impl Agent for HttpAgent {
                             Self::Output {
                                 status_code: res.status(),
                                 value: text,
-                                call_name: call_name
+                                call_name: call_name,
+                                url: res.url(),
+                                redirected: res.redirected()
                             }
                         },
                     };
@@ -229,14 +243,18 @@ impl Agent for HttpAgent {
                             Self::Output {
                                 status_code: res.status(),
                                 value: text,
-                                call_name: call_name
+                                call_name: call_name,
+                                url: res.url(),
+                                redirected: res.redirected()
                             }
                         },
                         Err(_) => {
                             Self::Output {
                                 status_code: 404,
                                 value: None,
-                                call_name: call_name
+                                call_name: call_name,
+                                url: "".into(),
+                                redirected: false
                             }
                         },
                         Ok(res) => {
@@ -247,7 +265,9 @@ impl Agent for HttpAgent {
                             Self::Output {
                                 status_code: res.status(),
                                 value: text,
-                                call_name: call_name
+                                call_name: call_name,
+                                url: res.url(),
+                                redirected: res.redirected()
                             }
                         },
                     };
@@ -280,14 +300,18 @@ impl Agent for HttpAgent {
                             Self::Output {
                                 status_code: res.status(),
                                 value: text,
-                                call_name: call_name
+                                call_name: call_name,
+                                url: res.url(),
+                                redirected: res.redirected()
                             }
                         },
                         Err(_) => {
                             Self::Output {
                                 status_code: 404,
                                 value: None,
-                                call_name: call_name
+                                call_name: call_name,
+                                url: "".into(),
+                                redirected: false
                             }
                         },
                         Ok(res) => {
@@ -298,7 +322,9 @@ impl Agent for HttpAgent {
                             Self::Output {
                                 status_code: res.status(),
                                 value: text,
-                                call_name: call_name
+                                call_name: call_name,
+                                url: res.url(),
+                                redirected: res.redirected()
                             }
                         },
                     };
