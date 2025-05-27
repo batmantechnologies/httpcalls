@@ -1,6 +1,6 @@
 use yew::prelude::*;
-use httpmessenger::{StoreProvider, AppAction};
-use httpcalls::{HttpClient, HttpError, use_http_client};
+use httpmessenger::StoreProvider;
+use httpcalls::{HttpClient, use_http_client};
 use serde::{Deserialize, Serialize};
 use gloo_console::log;
 use wasm_bindgen_futures::spawn_local;
@@ -187,9 +187,11 @@ pub fn upload_example() -> Html {
                 let file_data = b"Hello, this is a test file content!";
                 
                 let form_data = web_sys::FormData::new().unwrap();
+                let blob_options = web_sys::BlobPropertyBag::new();
+                blob_options.set_type("text/plain");
                 let blob = web_sys::Blob::new_with_u8_array_sequence_and_options(
                     &js_sys::Array::of1(&js_sys::Uint8Array::from(file_data.as_ref())),
-                    web_sys::BlobPropertyBag::new().type_("text/plain"),
+                    &blob_options,
                 ).unwrap();
                 
                 form_data.append_with_blob_and_filename("file", &blob, "test.txt").unwrap();
