@@ -1,25 +1,48 @@
 [package]
 name = "httpcalls"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+description = "Modern HTTP client for Yew applications with automatic state management"
+license = "MIT OR Apache-2.0"
+keywords = ["yew", "wasm", "http", "client", "frontend"]
+categories = ["web-programming", "wasm", "api-bindings"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [lib]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-yew-agent = "0.1"
-gloo-console = "0.2.1"
-wasm-bindgen-futures = "0.4"
+httpmessenger = { path = "../httpmessenger" }
+yew = { version = "0.20", features = ["csr"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 reqwasm = "0.5"
-httpmessenger = { path="../httpmessenger" }
-parking_lot = "0.12.1"
-web-sys = "0.3"
+gloo-console = "0.2"
+gloo-timers = { version = "0.2", features = ["futures"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+thiserror = "1.0"
+# Only minimal web-sys features needed for utility functions
+web-sys = { version = "0.3", features = [
+    "FormData",
+    "Window",
+] }
 
 [dev-dependencies]
-wasm-bindgen-test = "0.3.0"
+wasm-bindgen-test = "0.3"
+# Additional web-sys features only for examples and tests
+web-sys = { version = "0.3", features = [
+    "Blob",
+    "BlobPropertyBag",
+    "Url",
+    "console",
+    "File",
+    "FileList",
+    "HtmlInputElement",
+    "Event",
+    "EventTarget",
+] }
 
-[target.wasm32-unknown-unknown]
-runner = 'wasm-bindgen-test-runner'
+[features]
+default = []
+debug = []
