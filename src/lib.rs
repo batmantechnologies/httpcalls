@@ -572,9 +572,14 @@ impl HttpClient {
     }
     
     /// Create GET request
+    #[cfg(debug_assertions)]
     pub fn get(&self, url: &str) -> RequestBuilder {
         self.create_builder(HttpMethod::Get, url)
-            .retry(2, 1000)  // Default: 2 retries (3 total attempts) with 1s delay
+    }
+    
+    #[cfg(not(debug_assertions))]
+    pub fn get(&self, url: &str) -> RequestBuilder {
+        self.create_builder(HttpMethod::Get, url).retry(2, 1000)
     }
     
     /// Create POST request
